@@ -6,8 +6,8 @@ This script will do the following:
 2. Remove unused style declarations
 3. Duplicate style element into the following elements:
     - the first `<head>` element
-    - TBD: the second `<head>` element (will create if not existing)
-    - the `<body>` element (TDB: as the first child)
+    - the second `<head>` element (will create if not existing)
+    - the `<body>` element (as the first child)
 4. Apply inline styles to all selected elements
 5. Output prettified and updated html to source file or desired location
 
@@ -16,10 +16,10 @@ This script will do the following:
 Run the following to test it out using the `test.html` file:
 
 ```bash
-node update.js -t test.html -o outputs/updated-test.html
+node update.js -t test.html -o .outputs/updated-test.html
 ```
 
-- `--template` or `-t` must be used to specify the location of the html file you wish to update
+- `--template` or `-t` __MUST__ be used to specify the location of the html file you wish to update
 - `--output` or `-o` can optionally be used to specify the output filepath for the updated html
 
 ## TLDR
@@ -32,4 +32,4 @@ After using this tool, your html should be ready for any email campaigns and hop
 4. All elements that match the selector of a declared style should have the styles applied inline to support clients that don't support head styles
 5. All media queries can only be `screen`, `min-width`, and `max-width` based as some clients don't support height based media queries
 6. The first rule inside each media query should be a non-applicable with benign side-effects as some clients won't prefix the first rule. Ex: `.non-used-class: { color: black; }`
-7. Media queries should be nested within another media query as some clients do not support nested media queries
+7. Media queries should __NOT__ be nested within another media query as some clients do not support nested media queries

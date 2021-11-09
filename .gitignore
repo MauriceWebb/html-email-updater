@@ -8,6 +8,7 @@
 
 # Compiled files
 /lib
+/.outputs
 
 # misc
 .DS_Store

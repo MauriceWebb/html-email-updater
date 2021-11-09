@@ -52,9 +52,11 @@ function getHTML() {
  * @param {cheerio.CheerioAPI} $ 
  */
 function styleCssToObj($) {
-    const headStyleEl = $('head style').html()
-    const bodyStyleEl = $('body style').html()
-    const elementStyles = [headStyleEl, bodyStyleEl]
+    const headStyleEls = $('head style')
+        .toArray().map(el => $(el).html().trim())
+    const bodyStyleEls = $('body style')
+        .toArray().map(el => $(el).html().trim())
+    const elementStyles = [...headStyleEls, ...bodyStyleEls]
     const styles = {}
 
     elementStyles
@@ -86,7 +88,10 @@ function styleCssToObj($) {
 
 /**
  * 
- * @param {{ $: cheerio.CheerioAPI, styleObj: { string: String, object: Object}}} args
+ * @param {{ 
+ *   $: cheerio.CheerioAPI, 
+ *   styleObj: { string: String, object: Object}
+ * }} args
  */
 function stylizeHTML({ $, styleObj }) {
     const updatedEls = []
@@ -137,7 +142,8 @@ function stylizeHTML({ $, styleObj }) {
         delete el.attribs[helperAttr]
     })
 
-    return $.html()
+    // ensure style elements are properly placed:
+    return ensureStyles({ $, styleObj })
 }
 
 function getElStyleObj(el) {
@@ -166,9 +172,85 @@ function getStyleObjString(updatedStylesObj) {
     return Object.keys(updatedStylesObj).reduce((
         styleStr, property
     ) => {
-        styleStr += ` ${property}: ${updatedStylesObj[property]};`
+        const prop = property.replace(/[A-Z]/g, match =>
+            `-${match.toLowerCase()}`
+        )
+        styleStr += ` ${prop}: ${updatedStylesObj[property]};`
         return styleStr
     }, '').trim()
+}
+
+/**
+ * 
+ * @param {{ 
+ *   $: cheerio.CheerioAPI, 
+ *   styleObj: { string: String, object: Object}
+ * }} args
+ */
+function ensureStyles({ $, styleObj }) {
+    if (Object.keys(styleObj).length === 0) {
+        console.log('reached!')
+        return $.html()
+    }
+
+    // If there is already a head element, check to see if it has a style element. Add one if not:
+    const headEls = $('head')
+    if (headEls.length > 0) {
+        // are there aren't any head styles:
+        if ($('head style').length === 0) {
+            // add a style element into first head element:
+            headEls.first().append('<style>')
+        }
+    }
+
+    // Update header's first style element to styleObj or create it if not exists. Create second head element and duplicate styleObj into a style element within it:
+    const headStyles = $('head style')
+    const headStyleStr = '<head><style></style></head>'
+    const tmpHead = cheerio.load(headStyleStr)('head')
+
+    if (headStyles.length < 2) {
+        // Create 1 or 2 head elements and add styles:
+        for (let i = 0; i < (headStyles.length === 0 ? 2 : 1); i++) {
+            tmpHead.clone().insertBefore($('body'))
+        }
+    }
+
+    // Remove any empty head elements:
+    $('head').each((idx, el) => {
+        if (el.children.length === 0) {
+            $(el).remove()
+        }
+    })
+
+    // Add styles to first two head elements
+    const cssStyles = Object.entries(styleObj)
+        .map(([s, declarations]) => {
+            const d = declarations.reduce((str, { string }) => {
+                str += `${string}\n`
+                return str
+            }, '')
+            return `${s} {\n${d}}`
+        })
+        .join('\n')
+
+    $('head style').each((idx, styleEl) =>
+        $(styleEl)
+            .empty()
+            .html(cssStyles)
+    )
+
+    // Verify that body's first child is a style element and create one if not. Update body's style element to styleObj:
+    if ($('body').children().first().prop('name') !== 'style') {
+        // first check if there is a style in the body:
+        const tmp = $('body style')
+        const bodyStyle = tmp.length >= 1 ? tmp.first() : $('<style>')
+        bodyStyle.insertBefore($('body').children().first())
+    }
+    $('body').children().first()
+        .empty()
+        .html(cssStyles)
+
+    return $.html()
 }
 
 async function outputHTML(htmlString) {
@@ -179,7 +261,8 @@ async function outputHTML(htmlString) {
     fse.outputFileSync(
         outputPath,
         prettier.format(
-            htmlString.trim(), { ...prettierConfig, parser: 'html' }
+            htmlString.trim().replace(/></g, '>\n<'),
+            { ...prettierConfig, parser: 'html' }
         ),
         (err) => {
             if (err) throw err;
