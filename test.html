@@ -8,6 +8,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
     <title>Ally Alert</title>
+    <style>
+        @media only screen and (max-width: 400px) {
+
+            .preheader,
+            .preheader-even {
+                color: purple;
+            }
+        }
+    </style>
 </head>
 
 <body style="min-width:100%;">
@@ -15,7 +24,7 @@
         Let us know how we can help.
     </span>
     <div class="preheader preheader-even">
-        <p id="#test-id-3" style="margin-bottom: 20px;">This is a test.</p>
+        <p id="#test-id-3" class="all-pink" style="margin-bottom: 20px;">This is a test.</p>
         <p class="all-yellow">Should be yellow <span class="text-black"
                 style="background-color: black; color: white;">except for this.</span></p>
     </div>
@@ -29,6 +38,12 @@
 
         #test-id-1 {
             font-size: larger;
+        }
+
+        @media only screen and (max-width: 800px) {
+            .preheader {
+                color: blue;
+            }
         }
 
         .preheader {
@@ -62,6 +77,11 @@
         }
     </style>
     <span class="preheader preheader-even">
+        <style>
+            .all-pink {
+                color: pink
+            }
+        </style>
         Styles should be applied.
     </span>
     <span class="preheader all-yellow" style="color: orange;">

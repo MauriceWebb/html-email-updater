@@ -52,25 +52,18 @@ function getHTML() {
  * @param {cheerio.CheerioAPI} $ 
  */
 function styleCssToObj($) {
-    const headStyleEls = $('head style')
-        .toArray().map(el => $(el).html().trim())
-    const bodyStyleEls = $('body style')
-        .toArray().map(el => $(el).html().trim())
-    const elementStyles = [...headStyleEls, ...bodyStyleEls]
     const styles = {}
-
-    elementStyles
-        .filter(style => !['', null, undefined].includes(style))
-        .map(style => css.parse(style).stylesheet.rules)
-        .flat()
+    getAllDocumentRules($)
         .forEach(style => {
             if (style == null) return
             const { type, selectors, declarations } = style
             if (type !== 'rule') return
-            const decs = declarations.map(({ property, value }) => ({
-                string: property ? `${property}: ${value};` : '',
-                object: property ? { [property]: value } : {}
-            }))
+            const decs = declarations.map(({ property, value }) => {
+                return {
+                    string: property ? `${property}: ${value};` : '',
+                    object: property ? { [property]: value } : {}
+                }
+            })
             selectors.forEach(selector => {
                 if (styles[selector]) {
                     styles[selector] = [
@@ -84,6 +77,23 @@ function styleCssToObj($) {
         })
 
     return styles
+}
+
+/**
+ * 
+ * @param {cheerio.CheerioAPI} $ 
+ */
+function getAllDocumentRules($) {
+    const headStyleEls = $('head style')
+        .toArray().map(el => $(el).html().trim())
+    const bodyStyleEls = $('body style')
+        .toArray().map(el => $(el).html().trim())
+    const elementStyles = [...headStyleEls, ...bodyStyleEls]
+
+    return elementStyles
+        .filter(style => !['', null, undefined].includes(style))
+        .map(style => css.parse(style).stylesheet.rules)
+        .flat()
 }
 
 /**
@@ -142,8 +152,13 @@ function stylizeHTML({ $, styleObj }) {
         delete el.attribs[helperAttr]
     })
 
+    // Update media queries:
+    const mediaQueries = updateMediaQueries({ $, rules: getAllDocumentRules($) })
+
     // ensure style elements are properly placed:
-    return ensureStyles({ $, styleObj })
+    ensureStyles({ $, styleObj, mediaQueries })
+
+    return $.html()
 }
 
 function getElStyleObj(el) {
@@ -187,10 +202,9 @@ function getStyleObjString(updatedStylesObj) {
  *   styleObj: { string: String, object: Object}
  * }} args
  */
-function ensureStyles({ $, styleObj }) {
+function ensureStyles({ $, styleObj, mediaQueries = '' }) {
     if (Object.keys(styleObj).length === 0) {
-        console.log('reached!')
-        return $.html()
+        return
     }
 
     // If there is already a head element, check to see if it has a style element. Add one if not:
@@ -236,7 +250,7 @@ function ensureStyles({ $, styleObj }) {
     $('head style').each((idx, styleEl) =>
         $(styleEl)
             .empty()
-            .html(cssStyles)
+            .html(cssStyles + mediaQueries)
     )
 
     // Verify that body's first child is a style element and create one if not. Update body's style element to styleObj:
@@ -248,9 +262,53 @@ function ensureStyles({ $, styleObj }) {
     }
     $('body').children().first()
         .empty()
-        .html(cssStyles)
+        .html(cssStyles + mediaQueries)
 
-    return $.html()
+    return
+}
+
+/**
+ * 
+ * @param {{ 
+ *   $: cheerio.CheerioAPI, 
+ *   rules: []
+ * }} args
+ */
+function updateMediaQueries({ $, rules }) {
+    const queries = []
+    rules
+        .filter(({ type }) => type === 'media')
+        .forEach(style => {
+            if (style.type === 'media') {
+                const mediaRules = style.rules.reduce((str, rule) => {
+                    const { type, selectors, declarations } = rule
+                    if (type !== 'rule') str
+                    const decStr = declarations.map(({ property, value }) => property ? `${property}: ${value};` : '')
+                    const validSelectors = []
+                    selectors.forEach(selector => {
+                        // check if selector exists:
+                        if ($(selector).length > 0) {
+                            validSelectors.push(selector)
+                        }
+                    })
+
+                    if (validSelectors.length > 0) {
+                        return str += `${validSelectors.join(',\n')} {\n${decStr.join('\n')}\n}`
+                    }
+
+                    return str
+                }, '')
+
+                if (mediaRules) {
+                    const nonApplicableRule = `.NA-${helperAttr.split('data-os-')[1]} {\ncolor: black;\n}\n`
+                    const finalMediaRules = nonApplicableRule + mediaRules
+                    queries.push(
+                        `@media ${style.media} {\n${finalMediaRules}\n}`
+                    )
+                }
+            }
+        })
+    return queries.join('\n')
 }
 
 async function outputHTML(htmlString) {

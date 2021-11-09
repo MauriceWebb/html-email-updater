@@ -3,13 +3,14 @@ This script can be used during local development or on a server to update an htm
 This script will do the following:
 
 1. Consolidate header and body styles into one style element
-2. Remove unused style declarations
-3. Duplicate style element into the following elements:
+2. Consolidate all media queries and update all media query styles with a non-applicable rule as the first rule
+3. Remove unused style declarations
+4. Duplicate style element into the following elements:
     - the first `<head>` element
     - the second `<head>` element (will create if not existing)
     - the `<body>` element (as the first child)
-4. Apply inline styles to all selected elements
-5. Output prettified and updated html to source file or desired location
+5. Apply inline styles to all selected elements
+6. Output prettified and updated html to source file or desired location
 
 ## Usage
 
